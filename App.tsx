@@ -1,30 +1,136 @@
-import { StatusBar } from "expo-status-bar";
-import { Text, View } from "react-native";
-import Main from "./components/Main";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import {
-  useFonts,
-  IBMPlexMono_400Regular,
-  IBMPlexMono_700Bold,
-} from "@expo-google-fonts/ibm-plex-mono";
-import AppLoading from "expo-app-loading";
+import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
+import React, { useState, useEffect } from "react";
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system";
+import { FontAwesome } from "@expo/vector-icons";
+import { Recording } from "expo-av/build/Audio";
 
 export default function App() {
-  let [fontsLoaded] = useFonts({
-    IBMPlexMono_400Regular,
-    IBMPlexMono_700Bold,
-  });
+  const [recording, setRecording] = useState<Recording | null>(null);
+  const [recordingStatus, setRecordingStatus] = useState("idle");
+  const [audioPermission, setAudioPermission] = useState(false);
 
-  if (!fontsLoaded) {
-    return <Text>Loading...</Text>;
+  useEffect(() => {
+    // Simply get recording permission upon first render
+    async function getPermission() {
+      await Audio.requestPermissionsAsync()
+        .then((permission) => {
+          console.log("Permission Granted: " + permission.granted);
+          setAudioPermission(permission.granted);
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+
+    // Call function to get permission
+    getPermission();
+    // Cleanup upon first render
+    return () => {
+      if (recording) {
+        stopRecording();
+      }
+    };
+  }, []);
+
+  async function startRecording() {
+    try {
+      // needed for IoS
+      if (audioPermission) {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+      }
+
+      const newRecording = new Audio.Recording();
+      console.log("Starting Recording");
+      await newRecording.prepareToRecordAsync(
+        Audio.RecordingOptionsPresets.HighQuality,
+      );
+      await newRecording.startAsync();
+      setRecording(newRecording as Recording | null);
+      setRecordingStatus("recording");
+    } catch (error) {
+      console.error("Failed to start recording", error);
+    }
+  }
+
+  async function stopRecording() {
+    try {
+      if (recordingStatus === "recording") {
+        console.log("Stopping Recording");
+        await recording?.stopAndUnloadAsync();
+        const recordingUri = recording?.getURI();
+
+        // Create a file name for the recording
+        const fileName = `recording-${Date.now()}.caf`;
+
+        // Move the recording to the new directory with the new file name
+        await FileSystem.makeDirectoryAsync(
+          FileSystem.documentDirectory + "recordings/",
+          { intermediates: true },
+        );
+        await FileSystem.moveAsync({
+          from: recordingUri as string,
+          to: FileSystem.documentDirectory + "recordings/" + `${fileName}`,
+        });
+
+        // This is for simply playing the sound back
+        const playbackObject = new Audio.Sound();
+        await playbackObject.loadAsync({
+          uri: FileSystem.documentDirectory + "recordings/" + `${fileName}`,
+        });
+        await playbackObject.playAsync();
+
+        // resert our states to record again
+        setRecording(null);
+        setRecordingStatus("stopped");
+      }
+    } catch (error) {
+      console.error("Failed to stop recording", error);
+    }
+  }
+
+  async function handleRecordButtonPress() {
+    if (recording) {
+      await stopRecording();
+    } else {
+      await startRecording();
+    }
   }
 
   return (
-    <SafeAreaProvider>
-      <View className="flex-1 justify-center items-center bg-[#272727]">
-        <StatusBar style="auto" />
-        <Main />
-      </View>
-    </SafeAreaProvider>
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.button} onPress={handleRecordButtonPress}>
+        <FontAwesome
+          name={recording ? "stop-circle" : "circle"}
+          size={64}
+          color="white"
+        />
+      </TouchableOpacity>
+      <Text
+        style={styles.recordingStatusText}
+      >{`Recording status: ${recordingStatus}`}</Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  button: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: "red",
+  },
+  recordingStatusText: {
+    marginTop: 16,
+  },
+});
