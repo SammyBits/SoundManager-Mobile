@@ -1,15 +1,24 @@
 import { Pressable, Text, View } from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-export default function Main() {
+export function Main() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <>
-      <View>
-        <Text className="text-4xl text-white text-center font-mono">
-          SoundManager
-        </Text>
-      </View>
-      <Text className="font-black">Ya estamos aprendiendo</Text>
-      <Text className="font-bold">Aprendiendo a programar</Text>
-    </>
+    <View
+      style={{
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+        paddingTop: insets.top,
+      }}
+    >
+      <Text>SoundManager</Text>
+      <Text>Ya estamos aprendiendo</Text>
+      <Text>Aprendiendo a programar</Text>
+    </View>
   );
 }
