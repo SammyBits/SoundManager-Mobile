@@ -1,20 +1,30 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from "expo-status-bar";
+import { Text, View } from "react-native";
+import Main from "./components/Main";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  useFonts,
+  IBMPlexMono_400Regular,
+  IBMPlexMono_700Bold,
+} from "@expo-google-fonts/ibm-plex-mono";
+import AppLoading from "expo-app-loading";
 
 export default function App() {
+  let [fontsLoaded] = useFonts({
+    IBMPlexMono_400Regular,
+    IBMPlexMono_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return <Text>Loading...</Text>;
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <View className="flex-1 justify-center items-center bg-[#272727]">
+        <StatusBar style="auto" />
+        <Main />
+      </View>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
